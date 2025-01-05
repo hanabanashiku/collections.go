@@ -1,6 +1,8 @@
 package collections
 
-import "errors"
+import (
+	"errors"
+)
 
 const defaultCapacity = 4
 
@@ -23,6 +25,19 @@ func NewListWithCapacity[T any](capacity int) List[T] {
 	}
 }
 
+func NewListFromArray[T any](array []T) List[T] {
+	items := make([]*T, len(array))
+
+	for i, item := range array {
+		items[i] = &item
+	}
+
+	return List[T]{
+		items: items,
+		count: len(array),
+	}
+}
+
 func (list List[T]) Count() int {
 	return list.count
 }
@@ -34,10 +49,6 @@ func (list List[T]) GetCapacity() int {
 func (list List[T]) ToArray() []*T {
 	array := list.items
 	return array[:list.count]
-}
-
-func (list List[T]) AsEnumerable() Enumerable[T] {
-	return list
 }
 
 func (list List[T]) Get(i int) *T {
@@ -86,8 +97,8 @@ func (list List[T]) AddRange(enumerable Enumerable[T]) {
 	}
 
 	enumerator := enumerable.GetEnumerator()
-	for enumerator.MoveNext() {
-		list.Add(enumerator.Current())
+	for current := range enumerator {
+		list.Add(current)
 	}
 }
 
@@ -185,10 +196,16 @@ func (list List[T]) TrimExcess() {
 }
 
 func (list List[T]) GetEnumerator() Enumerator[T] {
-	return ListEnumerator[T]{
-		index: -1,
-		list:  &list,
-	}
+	ch := make(chan *T)
+
+	go func() {
+		for _, v := range list.items {
+			ch <- v
+		}
+		close(ch)
+	}()
+
+	return ch
 }
 
 func growList[T any](list *List[T], increaseBy int) {
@@ -211,26 +228,4 @@ func checkSize[T any](list *List[T], index int) error {
 	}
 
 	return errors.New("index out of range")
-}
-
-type ListEnumerator[T any] struct {
-	index int
-	list  *List[T]
-}
-
-func (enumerator ListEnumerator[T]) Current() *T {
-	return enumerator.list.Get(enumerator.index)
-}
-
-func (enumerator ListEnumerator[T]) MoveNext() bool {
-	if enumerator.index+1 >= enumerator.list.Count() {
-		return false
-	}
-
-	enumerator.index++
-	return true
-}
-
-func (enumerator ListEnumerator[T]) Reset() {
-	enumerator.index = -1
 }

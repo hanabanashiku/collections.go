@@ -5,11 +5,10 @@ func ToArray[T any](enumerable Enumerable[T]) []*T {
 		return collection.ToArray()
 	}
 
-	enumerator := enumerable.GetEnumerator()
 	count := 0
 	buffer := make([]*T, 0, 4)
 
-	for enumerator.MoveNext() {
+	for current := range enumerable.GetEnumerator() {
 		if count == len(buffer) {
 			newBuffer := make([]*T, 0, len(buffer)*2)
 			copy(newBuffer, buffer)
@@ -17,7 +16,7 @@ func ToArray[T any](enumerable Enumerable[T]) []*T {
 		}
 
 		count++
-		buffer[count] = enumerator.Current()
+		buffer[count] = current
 	}
 
 	array := make([]*T, 0, count)

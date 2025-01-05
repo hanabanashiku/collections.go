@@ -1,5 +1,6 @@
 package collections
 
+type Enumerator[T any] <-chan *T
 type Enumerable[T any] interface {
 	GetEnumerator() Enumerator[T]
 }

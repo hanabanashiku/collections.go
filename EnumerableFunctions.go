@@ -7,10 +7,8 @@ func Count[T any](enumerable Enumerable[T]) int {
 		return collection.Count()
 	}
 
-	enumerator := enumerable.GetEnumerator()
 	i := 0
-
-	for enumerator.MoveNext() {
+	for _ = range enumerable.GetEnumerator() {
 		i++
 	}
 
@@ -18,10 +16,8 @@ func Count[T any](enumerable Enumerable[T]) int {
 }
 
 func Any[T any](enumerable Enumerable[T], predicate func(*T) bool) bool {
-	enumerator := enumerable.GetEnumerator()
-
-	for enumerator.MoveNext() {
-		if predicate(enumerator.Current()) {
+	for current := range enumerable.GetEnumerator() {
+		if predicate(current) {
 			return true
 		}
 	}
@@ -34,16 +30,14 @@ func IsEmpty[T any](enumerable Enumerable[T]) bool {
 		return collection.Count() == 0
 	}
 
-	enumerator := enumerable.GetEnumerator()
-	return !enumerator.MoveNext()
+	_, notEmpty := <-enumerable.GetEnumerator()
+	return !notEmpty
 }
 
 func Find[T any](enumerable Enumerable[T], predicate func(*T) bool) (*T, error) {
-	enumerator := enumerable.GetEnumerator()
-
-	for enumerator.MoveNext() {
-		if predicate(enumerator.Current()) {
-			return enumerator.Current(), nil
+	for current := range enumerable.GetEnumerator() {
+		if predicate(current) {
+			return current, nil
 		}
 	}
 
@@ -51,12 +45,11 @@ func Find[T any](enumerable Enumerable[T], predicate func(*T) bool) (*T, error) 
 }
 
 func ElementAt[T any](enumerable Enumerable[T], index int) (*T, error) {
-	enumerator := enumerable.GetEnumerator()
 	count := 0
 
-	for enumerator.MoveNext() {
+	for current := range enumerable.GetEnumerator() {
 		if count == index {
-			return enumerator.Current(), nil
+			return current, nil
 		}
 
 		count++
@@ -66,36 +59,66 @@ func ElementAt[T any](enumerable Enumerable[T], index int) (*T, error) {
 }
 
 func First[T any](enumerable Enumerable[T]) (*T, error) {
-	enumerator := enumerable.GetEnumerator()
 
-	for enumerator.MoveNext() {
-		return enumerator.Current(), nil
+	for current := range enumerable.GetEnumerator() {
+		return current, nil
 	}
 
 	return nil, errors.New("no elements in sequence")
 }
 
-func Last[T any](enumerable Enumerable[T]) (*T, error) {
-	enumerator := enumerable.GetEnumerator()
-	any := false
-
-	for enumerator.MoveNext() {
-		any = true
+func FirstBy[T any](enumerable Enumerable[T], predicate func(*T) bool) (*T, error) {
+	for current := range enumerable.GetEnumerator() {
+		if predicate(current) {
+			return current, nil
+		}
 	}
 
-	if !any {
+	return nil, errors.New("no elements in sequence")
+}
+
+func Single[T any](enumerable Enumerable[T]) (*T, error) {
+	enumerator := enumerable.GetEnumerator()
+	current, ok := <-enumerator
+
+	if !ok {
+		return nil, errors.New("no matching elements in sequence")
+	}
+
+	if _, hasNext := <-enumerator; hasNext {
+		return nil, errors.New("more than one matching element in sequence")
+	}
+
+	return current, nil
+}
+
+func SingleBy[T any](enumerable Enumerable[T], predicate func(*T) bool) (*T, error) {
+	return Single(Where(enumerable, predicate))
+}
+
+func Last[T any](enumerable Enumerable[T]) (*T, error) {
+	var last *T
+
+	for current := range enumerable.GetEnumerator() {
+		last = current
+	}
+
+	if last == nil {
 		return nil, errors.New("no elements in sequence")
 	}
 
-	return enumerator.Current(), nil
+	return last, nil
+}
+
+func LastBy[T any](enumerable Enumerable[T], predicate func(*T) bool) (*T, error) {
+	return Last(Where(enumerable, predicate))
 }
 
 func ForEach[T any](enumerable Enumerable[T], callback func(*T, int)) {
-	enumerator := enumerable.GetEnumerator()
 	index := 0
 
-	for enumerator.MoveNext() {
-		callback(enumerator.Current(), index)
+	for current := range enumerable.GetEnumerator() {
+		callback(current, index)
 		index++
 	}
 }
@@ -104,15 +127,17 @@ func SequenceEqual[T any](enumerable Enumerable[T], compare Enumerable[T]) bool 
 	a := enumerable.GetEnumerator()
 	b := compare.GetEnumerator()
 
-	for a.MoveNext() {
-		if !b.MoveNext() {
+	for current_a := range a {
+		current_b, b_open := <-b
+		if !b_open {
 			return false
 		}
 
-		if a.Current() != b.Current() {
+		if current_a != current_b {
 			return false
 		}
 	}
 
-	return !b.MoveNext()
+	_, b_open := <-b
+	return !b_open
 }

@@ -1,6 +1,14 @@
 package collections
 
 func Select[TValue, TNext any](enumerable Enumerable[TValue], mapper func(*TValue) TNext) Enumerable[TNext] {
+	if enumerable == nil {
+		return Empty[TNext]()
+	}
+
+	if mapper == nil {
+		panic("mapper cannot be nil")
+	}
+
 	return selectEnumerable[TValue, TNext]{
 		values: enumerable,
 		mapper: mapper,
@@ -13,31 +21,16 @@ type selectEnumerable[TValue, TNext any] struct {
 }
 
 func (enumerable selectEnumerable[TValue, TNext]) GetEnumerator() Enumerator[TNext] {
-	return selectEnumerator[TValue, TNext]{
-		enumerator: enumerable.values.GetEnumerator(),
-		mapper:     enumerable.mapper,
-	}
-}
+	ch := make(chan *TNext)
 
-type selectEnumerator[TValue, TNext any] struct {
-	enumerator Enumerator[TValue]
-	mapper     func(*TValue) TNext
-}
+	go func() {
+		for current := range enumerable.values.GetEnumerator() {
+			next := enumerable.mapper(current)
+			ch <- &next
+		}
 
-func (enumerator selectEnumerator[TValue, TNext]) MoveNext() bool {
-	return enumerator.enumerator.MoveNext()
-}
+		close(ch)
+	}()
 
-func (enumerator selectEnumerator[TValue, TNext]) Current() *TNext {
-	current := enumerator.enumerator.Current()
-	if current == nil {
-		return nil
-	}
-
-	mapped := enumerator.mapper(current)
-	return &mapped
-}
-
-func (enumerator selectEnumerator[TValue, TNext]) Reset() {
-	enumerator.enumerator.Reset()
+	return ch
 }
