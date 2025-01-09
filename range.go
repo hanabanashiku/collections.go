@@ -47,12 +47,12 @@ type repeatEnumerable[T any] struct {
 
 func (enumerable repeatEnumerable[T]) GetEnumerator() Enumerator[T] {
 	ch := make(chan *T, enumerable.count)
+	defer close(ch)
 
 	go func() {
 		for i := 0; i < enumerable.count; i++ {
 			ch <- enumerable.element
 		}
-		close(ch)
 	}()
 
 	return ch

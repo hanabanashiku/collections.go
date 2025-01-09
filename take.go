@@ -16,6 +16,7 @@ func (enumerable takeEnumerable[T]) GetEnumerator() Enumerator[T] {
 	ch := make(chan *T)
 
 	go func() {
+		defer close(ch)
 		i := 0
 		for current := range enumerable.source.GetEnumerator() {
 			if i >= enumerable.count {
@@ -26,8 +27,6 @@ func (enumerable takeEnumerable[T]) GetEnumerator() Enumerator[T] {
 			ch <- current
 			i++
 		}
-
-		close(ch)
 	}()
 
 	return ch

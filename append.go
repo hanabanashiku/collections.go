@@ -28,6 +28,7 @@ func (enumerable insertAtEnumerable[T]) GetEnumerator() Enumerator[T] {
 	index := 0
 	inserted := false
 	go func() {
+		defer close(ch)
 		for current_a := range enumerable.values.GetEnumerator() {
 			if index == enumerable.index {
 				inserted = true
@@ -41,8 +42,6 @@ func (enumerable insertAtEnumerable[T]) GetEnumerator() Enumerator[T] {
 		if !inserted {
 			YieldRange(ch, enumerable.toInsert)
 		}
-
-		close(ch)
 	}()
 
 	return ch

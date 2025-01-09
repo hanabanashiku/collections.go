@@ -24,13 +24,12 @@ func (enumerable whereEnumerable[T]) GetEnumerator() Enumerator[T] {
 	ch := make(chan *T)
 
 	go func() {
+		defer close(ch)
 		for current := range enumerable.GetEnumerator() {
 			if enumerable.predicate(current) {
 				ch <- current
 			}
 		}
-
-		close(ch)
 	}()
 
 	return ch

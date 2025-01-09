@@ -30,6 +30,7 @@ func (enumerable skipEnumerable[T]) GetEnumerator() Enumerator[T] {
 	ch := make(chan *T)
 
 	go func() {
+		defer close(ch)
 		i := 0
 		for current := range enumerable.source.GetEnumerator() {
 			if i < enumerable.count {
@@ -39,8 +40,6 @@ func (enumerable skipEnumerable[T]) GetEnumerator() Enumerator[T] {
 			ch <- current
 			i++
 		}
-
-		close(ch)
 	}()
 
 	return ch
@@ -55,6 +54,7 @@ func (enumerable skipWhileEnumerable[T]) GetEnumerator() Enumerator[T] {
 	ch := make(chan *T)
 
 	go func() {
+		defer close(ch)
 		i := 0
 		skipping := true
 		for current := range enumerable.source.GetEnumerator() {
@@ -66,8 +66,6 @@ func (enumerable skipWhileEnumerable[T]) GetEnumerator() Enumerator[T] {
 				ch <- current
 			}
 		}
-
-		close(ch)
 	}()
 
 	return ch
@@ -82,6 +80,7 @@ func (enumerable skipLastEnumerable[T]) GetEnumerator() Enumerator[T] {
 	ch := make(chan *T)
 
 	go func() {
+		defer close(ch)
 		stack := NewStack[T]()
 
 		for current := range enumerable.source.GetEnumerator() {
@@ -100,8 +99,6 @@ func (enumerable skipLastEnumerable[T]) GetEnumerator() Enumerator[T] {
 		for _, item := range stack.ToArray() {
 			ch <- item
 		}
-
-		close(ch)
 	}()
 
 	return ch

@@ -24,12 +24,12 @@ func (enumerable selectEnumerable[TValue, TNext]) GetEnumerator() Enumerator[TNe
 	ch := make(chan *TNext)
 
 	go func() {
+		defer close(ch)
 		for current := range enumerable.values.GetEnumerator() {
 			next := enumerable.mapper(current)
 			ch <- &next
 		}
 
-		close(ch)
 	}()
 
 	return ch
